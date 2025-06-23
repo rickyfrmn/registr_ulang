@@ -81,7 +81,7 @@
     db.ref("antrian/nomor").get().then(snap => {
       let num = snap.exists() ? snap.val() : 0;
       let nextNum = num + 1;
-      db.ref("antrian").set({ nomor: nextNum, loket: loket });
+      db.ref("antrian").set({ nomor: nextNum });
       db.ref(`loket/${loket}`).set(nextNum);
       bicara(nextNum, loket);
     });
