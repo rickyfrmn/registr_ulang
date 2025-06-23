@@ -34,7 +34,10 @@
 <body>
 
 <h1>Admin 10 Loket Antrian</h1>
-<button onclick="resetGlobal()" style="margin: 20px auto; display: block;">Reset Global</button>
+
+<button onclick="enableAudio()" style="margin:10px auto; display:block;">Aktifkan Suara</button>
+<button onclick="resetGlobal()" style="margin: 10px auto; display:block;">Reset Global</button>
+
 <div class="loket-container" id="loketContainer"></div>
 
 <audio id="dingdong" src="ding-dong.mp3" preload="auto"></audio>
@@ -43,8 +46,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyCJRUZfNVBnbENgHQio_ePHhK9U1XmzgU8",
+const firebaseConfig = {
+  apiKey: "AIzaSyCJRUZfNVBnbENgHQio_ePHhK9U1XmzgU8",
       authDomain: "daftar-ulang-3b51c.firebaseapp.com",
       databaseURL: "https://daftar-ulang-3b51c-default-rtdb.firebaseio.com",
       projectId: "daftar-ulang-3b51c",
@@ -52,73 +55,82 @@
       messagingSenderId: "391256117697",
       appId: "1:391256117697:web:3a46db31e287c8d6fd9f40",
       measurementId: "G-TKJWG48RGW"
-  };
+};
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-  const bell = document.getElementById("dingdong");
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const bell = document.getElementById("dingdong");
+let audioEnabled = false;
 
-  const loketContainer = document.getElementById("loketContainer");
-  for (let i = 1; i <= 10; i++) {
-    const div = document.createElement("div");
-    div.className = "loket";
-    div.innerHTML = `
-      <h2>Loket ${i}</h2>
-      <div class="nomor" id="nomor-${i}">000</div>
-      <button onclick="panggil(${i})">Panggil</button>
-      <button onclick="ulang(${i})">Ulang</button>
-    `;
-    loketContainer.appendChild(div);
+function enableAudio() {
+  const utter = new SpeechSynthesisUtterance("Audio diaktifkan");
+  utter.lang = "id-ID";
+  speechSynthesis.speak(utter);
+  audioEnabled = true;
+  document.querySelector("button").style.display = "none";
+}
 
-    db.ref(`loket/${i}`).on("value", snap => {
-      let data = snap.val();
-      let num = (typeof data === 'number') ? data : (data?.number || 0);
-      document.getElementById(`nomor-${i}`).textContent = String(num).padStart(3, '0');
-    });
-  }
+const loketContainer = document.getElementById("loketContainer");
+for (let i = 1; i <= 10; i++) {
+  const div = document.createElement("div");
+  div.className = "loket";
+  div.innerHTML = `
+    <h2>Loket ${i}</h2>
+    <div class="nomor" id="nomor-${i}">000</div>
+    <button onclick="panggil(${i})">Panggil</button>
+    <button onclick="ulang(${i})">Ulang</button>
+  `;
+  loketContainer.appendChild(div);
 
-  function panggil(loket) {
-    db.ref("antrian/nomor").get().then(snap => {
-      let num = snap.exists() ? snap.val() : 0;
-      let nextNum = num + 1;
-      db.ref("antrian").set({ nomor: nextNum, loket: loket });
-      db.ref(`loket/${loket}`).set(nextNum);
-      bicara(nextNum, loket);
-    });
-  }
+  db.ref(`loket/${i}`).on("value", snap => {
+    let data = snap.val();
+    let num = (typeof data === 'number') ? data : (data?.number || 0);
+    document.getElementById(`nomor-${i}`).textContent = String(num).padStart(3, '0');
+  });
+}
 
-  function ulang(loket) {
-    db.ref(`loket/${loket}`).get().then(snap => {
-      if (snap.exists()) {
-        const num = (typeof snap.val() === 'number') ? snap.val() : (snap.val()?.number || 0);
-        bicara(num, loket);
-      }
-    });
-  }
+function panggil(loket) {
+  db.ref("antrian/nomor").get().then(snap => {
+    let num = snap.exists() ? snap.val() : 0;
+    let nextNum = num + 1;
+    db.ref("antrian").set({ nomor: nextNum, loket: loket });
+    db.ref(`loket/${loket}`).set(nextNum);
+    if (audioEnabled) bicara(nextNum, loket);
+  });
+}
 
-  function resetGlobal() {
-    if (confirm("Yakin reset seluruh nomor antrian?")) {
-      db.ref("antrian").set({ nomor: 0 });
-      for (let i = 1; i <= 10; i++) {
-        db.ref(`loket/${i}`).set(0);
-      }
+function ulang(loket) {
+  db.ref(`loket/${loket}`).get().then(snap => {
+    if (snap.exists()) {
+      const num = (typeof snap.val() === 'number') ? snap.val() : (snap.val()?.number || 0);
+      if (audioEnabled) bicara(num, loket);
+    }
+  });
+}
+
+function resetGlobal() {
+  if (confirm("Yakin reset seluruh nomor antrian?")) {
+    db.ref("antrian").set({ nomor: 0 });
+    for (let i = 1; i <= 10; i++) {
+      db.ref(`loket/${i}`).set(0);
     }
   }
+}
 
-  function bicara(nomor, loket) {
-    const text = `Nomor antrian ${nomor}, silahkan menuju loket ${loket}`;
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = "id-ID";
-    utter.rate = 0.9;
-    utter.pitch = 1.2;
-    bell.play().then(() => {
-      bell.onended = () => speechSynthesis.speak(utter);
-    }).catch(() => {
-      speechSynthesis.speak(utter);
-    });
-  }
+function bicara(nomor, loket) {
+  const text = `Nomor antrian ${nomor}, silahkan menuju loket ${loket}`;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "id-ID";
+  utter.rate = 0.9;
+  utter.pitch = 1.2;
+  bell.play().then(() => {
+    bell.onended = () => speechSynthesis.speak(utter);
+  }).catch(() => {
+    speechSynthesis.speak(utter);
+  });
+}
 
-  window.speechSynthesis.onvoiceschanged = () => {};
+window.speechSynthesis.onvoiceschanged = () => {};
 </script>
 
 </body>
