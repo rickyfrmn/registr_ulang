@@ -11,21 +11,12 @@
       display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;
     }
     .loket {
-      background: white;
-      padding: 15px;
-      border-radius: 10px;
-      width: 200px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      text-align: center;
+      background: white; padding: 15px; border-radius: 10px; width: 200px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;
     }
     button {
-      padding: 8px 12px;
-      margin: 5px;
-      border: none;
-      border-radius: 5px;
-      background: #007bff;
-      color: white;
-      cursor: pointer;
+      padding: 8px 12px; margin: 5px; border: none; border-radius: 5px;
+      background: #007bff; color: white; cursor: pointer;
     }
     button:hover { background: #0056b3; }
     .nomor { font-size: 32px; font-weight: bold; margin: 10px 0; }
@@ -34,9 +25,8 @@
 <body>
 
 <h1>Admin 10 Loket Antrian</h1>
-
 <button onclick="enableAudio()" style="margin:10px auto; display:block;">Aktifkan Suara</button>
-<button onclick="resetGlobal()" style="margin: 10px auto; display:block;">Reset Global</button>
+<button onclick="resetGlobal()" style="margin:10px auto; display:block;">Reset Global</button>
 
 <div class="loket-container" id="loketContainer"></div>
 
@@ -47,14 +37,14 @@
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyAyaxMc6HMa_Pi9MAbYkhABVSI9S-L9i3s",
-      authDomain: "teller-33d2c.firebaseapp.com",
-      databaseURL: "https://teller-33d2c-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "teller-33d2c",
-      storageBucket: "teller-33d2c.firebasestorage.app",
-      messagingSenderId: "262230345273",
-      appId: "1:262230345273:web:808faf1600b3b1bca3afe8",
-      measurementId: "G-FJQMCDMSHE"
+  apiKey: "AIzaSyCJRUZfNVBnbENgHQio_ePHhK9U1XmzgU8",
+  authDomain: "daftar-ulang-3b51c.firebaseapp.com",
+  databaseURL: "https://daftar-ulang-3b51c-default-rtdb.firebaseio.com",
+  projectId: "daftar-ulang-3b51c",
+  storageBucket: "daftar-ulang-3b51c.firebasestorage.app",
+  messagingSenderId: "391256117697",
+  appId: "1:391256117697:web:3a46db31e287c8d6fd9f40",
+  measurementId: "G-TKJWG48RGW"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -129,8 +119,6 @@ function bicara(nomor, loket) {
     speechSynthesis.speak(utter);
   });
 }
-
-window.speechSynthesis.onvoiceschanged = () => {};
 </script>
 
 </body>
