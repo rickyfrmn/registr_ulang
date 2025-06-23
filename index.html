@@ -115,13 +115,16 @@
     }
 
     function recall(teller) {
-      db.ref(`teller/${teller}`).get().then(snap => {
-        if (snap.exists()) {
-          const num = snap.val();
-          db.ref("antrian").set({ nomor: num, teller });
-        }
+  db.ref(`teller/${teller}`).get().then(snap => {
+    if (snap.exists()) {
+      const num = snap.val();
+      db.ref("antrian").set({ nomor: num, teller }).then(() => {
+        // Langsung bicara ulang tanpa tunggu update Firebase listener
+        speakWithDing(`Nomor antrian ${num}, silakan ke teller ${teller}.`);
       });
     }
+  });
+}
 
     function reset() {
       if (confirm("Yakin reset antrian?")) {
