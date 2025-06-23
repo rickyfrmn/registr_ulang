@@ -2,124 +2,155 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin 10 Loket Antrian</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistem Antrian 10 Teller</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
-    h1 { text-align: center; margin-bottom: 10px; }
-    .loket-container {
-      display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
     }
-    .loket {
-      background: white; padding: 15px; border-radius: 10px; width: 200px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;
+    .card {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 15px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+    h1, h2 {
+      margin-bottom: 15px;
     }
     button {
-      padding: 8px 12px; margin: 5px; border: none; border-radius: 5px;
-      background: #007bff; color: white; cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin: 5px 8px 5px 0;
+      cursor: pointer;
     }
-    button:hover { background: #0056b3; }
-    .nomor { font-size: 32px; font-weight: bold; margin: 10px 0; }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .queue-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #ddd;
+    }
   </style>
 </head>
 <body>
 
-<h1>Admin 10 Loket Antrian</h1>
-<button onclick="enableAudio()" style="margin:10px auto; display:block;">Aktifkan Suara</button>
-<button onclick="resetGlobal()" style="margin:10px auto; display:block;">Reset Global</button>
+  <div class="card">
+    <h1>Sistem Antrian 10 Teller</h1>
+    <button onclick="reset()">Reset</button>
+    <div id="info"></div>
+  </div>
 
-<div class="loket-container" id="loketContainer"></div>
+  <div class="card">
+    <h2>Teller</h2>
+    <div id="teller-buttons"></div>
+  </div>
 
-<audio id="dingdong" src="ding-dong.mp3" preload="auto"></audio>
+  <div class="card">
+    <h2>Daftar Antrian</h2>
+    <div id="queue-list"></div>
+  </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <audio id="dingdong" src="ding-dong3.mp3" preload="auto"></audio>
 
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyCJRUZfNVBnbENgHQio_ePHhK9U1XmzgU8",
-  authDomain: "daftar-ulang-3b51c.firebaseapp.com",
-  databaseURL: "https://daftar-ulang-3b51c-default-rtdb.firebaseio.com",
-  projectId: "daftar-ulang-3b51c",
-  storageBucket: "daftar-ulang-3b51c.firebasestorage.app",
-  messagingSenderId: "391256117697",
-  appId: "1:391256117697:web:3a46db31e287c8d6fd9f40",
-  measurementId: "G-TKJWG48RGW"
-};
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const bell = document.getElementById("dingdong");
-let audioEnabled = false;
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCJRUZfNVBnbENgHQio_ePHhK9U1XmzgU8",
+      authDomain: "daftar-ulang-3b51c.firebaseapp.com",
+      databaseURL: "https://daftar-ulang-3b51c-default-rtdb.firebaseio.com",
+      projectId: "daftar-ulang-3b51c",
+      storageBucket: "daftar-ulang-3b51c.firebasestorage.app",
+      messagingSenderId: "391256117697",
+      appId: "1:391256117697:web:3a46db31e287c8d6fd9f40",
+      measurementId: "G-TKJWG48RGW"
+    };
 
-function enableAudio() {
-  const utter = new SpeechSynthesisUtterance("Audio diaktifkan");
-  utter.lang = "id-ID";
-  speechSynthesis.speak(utter);
-  audioEnabled = true;
-  document.querySelector("button").style.display = "none";
-}
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const bell = document.getElementById('dingdong');
+    const info = document.getElementById('info');
 
-const loketContainer = document.getElementById("loketContainer");
-for (let i = 1; i <= 10; i++) {
-  const div = document.createElement("div");
-  div.className = "loket";
-  div.innerHTML = `
-    <h2>Loket ${i}</h2>
-    <div class="nomor" id="nomor-${i}">000</div>
-    <button onclick="panggil(${i})">Panggil</button>
-    <button onclick="ulang(${i})">Ulang</button>
-  `;
-  loketContainer.appendChild(div);
-
-  db.ref(`loket/${i}`).on("value", snap => {
-    let data = snap.val();
-    let num = (typeof data === 'number') ? data : (data?.number || 0);
-    document.getElementById(`nomor-${i}`).textContent = String(num).padStart(3, '0');
-  });
-}
-
-function panggil(loket) {
-  db.ref("antrian/nomor").get().then(snap => {
-    let num = snap.exists() ? snap.val() : 0;
-    let nextNum = num + 1;
-    db.ref("antrian").set({ nomor: nextNum, loket: loket });
-    db.ref(`loket/${loket}`).set(nextNum);
-    if (audioEnabled) bicara(nextNum, loket);
-  });
-}
-
-function ulang(loket) {
-  db.ref(`loket/${loket}`).get().then(snap => {
-    if (snap.exists()) {
-      const num = (typeof snap.val() === 'number') ? snap.val() : (snap.val()?.number || 0);
-      if (audioEnabled) bicara(num, loket);
-    }
-  });
-}
-
-function resetGlobal() {
-  if (confirm("Yakin reset seluruh nomor antrian?")) {
-    db.ref("antrian").set({ nomor: 0 });
+    const tellerButtons = document.getElementById("teller-buttons");
     for (let i = 1; i <= 10; i++) {
-      db.ref(`loket/${i}`).set(0);
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <strong>Teller ${i}</strong><br>
+        <button onclick="call(${i})">Panggil</button>
+        <button onclick="recall(${i})">Ulang</button>
+      `;
+      tellerButtons.appendChild(div);
     }
-  }
-}
 
-function bicara(nomor, loket) {
-  const text = `Nomor antrian ${nomor}, silahkan menuju loket ${loket}`;
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = "id-ID";
-  utter.rate = 0.9;
-  utter.pitch = 1.2;
-  bell.play().then(() => {
-    bell.onended = () => speechSynthesis.speak(utter);
-  }).catch(() => {
-    speechSynthesis.speak(utter);
-  });
-}
-</script>
+    function speakWithDing(text) {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = "id-ID";
+      utter.rate = 0.85;
+      utter.pitch = 1;
+      bell.play().then(() => {
+        bell.onended = () => speechSynthesis.speak(utter);
+      }).catch(() => {
+        speechSynthesis.speak(utter);
+      });
+    }
 
+    function call(teller) {
+      db.ref("antrian/nomor").get().then(snap => {
+        let num = snap.exists() ? snap.val() : 0;
+        let nextNum = num + 1;
+        db.ref("antrian").set({ nomor: nextNum, teller });
+        db.ref(`teller/${teller}`).set(nextNum);
+      });
+    }
+
+    function recall(teller) {
+      db.ref(`teller/${teller}`).get().then(snap => {
+        if (snap.exists()) {
+          const num = snap.val();
+          db.ref("antrian").set({ nomor: num, teller });
+        }
+      });
+    }
+
+    function reset() {
+      if (confirm("Yakin reset antrian?")) {
+        db.ref("antrian").set({ nomor: 0 });
+        for (let i = 1; i <= 10; i++) {
+          db.ref(`teller/${i}`).set(0);
+        }
+      }
+    }
+
+    db.ref("antrian").on("value", snap => {
+      const data = snap.exists() ? snap.val() : { nomor: 0, teller: "-" };
+      const display = String(data.nomor).padStart(3, "0");
+      info.innerHTML = `<p>Nomor Antrian: <strong>${display}</strong> (Teller ${data.teller})</p>`;
+      updateQueue(data);
+      if (data.nomor > 0) {
+        speakWithDing(`Nomor antrian ${data.nomor}, silakan ke teller ${data.teller}.`);
+      }
+    });
+
+    function updateQueue(data) {
+      const list = document.getElementById('queue-list');
+      list.innerHTML = '';
+      const display = String(data.nomor).padStart(3, '0');
+      const row = document.createElement("div");
+      row.className = "queue-item";
+      row.innerHTML = `<span>${display}</span><span>Teller ${data.teller}</span>`;
+      list.appendChild(row);
+    }
+  </script>
 </body>
 </html>
