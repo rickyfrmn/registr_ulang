@@ -9,47 +9,36 @@
       font-family: Arial, sans-serif;
       background-color: #f4f4f4;
       padding: 20px;
-      max-width: 1200px;
+      max-width: 900px;
       margin: auto;
     }
     .card {
       background: white;
       padding: 20px;
+      margin-bottom: 20px;
       border-radius: 15px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-      margin-bottom: 20px;
     }
-    #teller-buttons {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 16px;
-    }
-    .loket-card {
-      background: #fff;
-      padding: 16px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    .loket-card h3 {
-      margin: 0 0 8px 0;
-    }
-    .loket-card .nomor {
-      font-size: 32px;
-      font-weight: bold;
-      margin-bottom: 8px;
+    h1, h2 {
+      margin-bottom: 15px;
     }
     button {
       background-color: #007bff;
       color: white;
       border: none;
-      padding: 8px 14px;
-      border-radius: 6px;
-      margin: 4px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin: 5px 8px 5px 0;
       cursor: pointer;
     }
     button:hover {
       background-color: #0056b3;
+    }
+    .queue-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #ddd;
     }
   </style>
 </head>
@@ -58,9 +47,18 @@
   <div class="card">
     <h1>Sistem Antrian 10 Verifikator</h1>
     <button onclick="reset()">Reset</button>
+    <div id="info"></div>
   </div>
 
-  <div class="card" id="teller-buttons"></div>
+  <div class="card">
+    <h2>Loket</h2>
+    <div id="teller-buttons"></div>
+  </div>
+
+  <div class="card">
+    <h2>Daftar Antrian</h2>
+    <div id="queue-list"></div>
+  </div>
 
   <audio id="dingdong" src="ding-dong.mp3" preload="auto"></audio>
 
@@ -82,21 +80,17 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const bell = document.getElementById('dingdong');
-    const tellerButtons = document.getElementById("teller-buttons");
-    const tellerNomor = {};
+    const info = document.getElementById('info');
 
+    const tellerButtons = document.getElementById("teller-buttons");
     for (let i = 1; i <= 10; i++) {
       const div = document.createElement("div");
-      div.className = "loket-card";
-      div.id = `verif-${i}`;
       div.innerHTML = `
-        <h3>Verifikator ${i}</h3>
-        <div class="nomor" id="nomor-${i}">000</div>
+        <strong>Verifikator ${i}</strong><br>
         <button onclick="call(${i})">Panggil</button>
         <button onclick="recall(${i})">Ulang</button>
       `;
       tellerButtons.appendChild(div);
-      tellerNomor[i] = 0;
     }
 
     function speakWithDing(text) {
@@ -144,8 +138,10 @@
     }
 
     db.ref("antrian").on("value", snap => {
-      const data = snap.val() || { nomor: 0, teller: "-" };
-      updateNomor(data.teller, data.nomor);
+      const data = snap.exists() ? snap.val() : { nomor: 0, teller: "-" };
+      const display = String(data.nomor).padStart(3, "0");
+      info.innerHTML = `<p>Nomor Antrian: <strong>${display}</strong> (verifikator ${data.teller})</p>`;
+      updateQueue(data);
       if (data.nomor > 0) {
         speakWithDing(`Nomor antrian ${data.nomor}, silakan ke verifikator ${data.teller}.`);
       }
@@ -158,18 +154,14 @@
       }
     });
 
-    for (let i = 1; i <= 10; i++) {
-      db.ref(`teller/${i}`).on("value", snap => {
-        const num = snap.val() || 0;
-        updateNomor(i, num);
-      });
-    }
-
-    function updateNomor(teller, nomor) {
-      const el = document.getElementById(`nomor-${teller}`);
-      if (el) {
-        el.textContent = String(nomor).padStart(3, '0');
-      }
+    function updateQueue(data) {
+      const list = document.getElementById('queue-list');
+      list.innerHTML = '';
+      const display = String(data.nomor).padStart(3, '0');
+      const row = document.createElement("div");
+      row.className = "queue-item";
+      row.innerHTML = `<span>${display}</span><span>Verifikator ${data.teller}</span>`;
+      list.appendChild(row);
     }
   </script>
 </body>
