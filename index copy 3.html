@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistem Antrian 10 Verifikator</title>
+  <title>Sistem Antrian 10 Teller</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -71,7 +71,7 @@
       authDomain: "daftar-ulang-3b51c.firebaseapp.com",
       databaseURL: "https://daftar-ulang-3b51c-default-rtdb.firebaseio.com",
       projectId: "daftar-ulang-3b51c",
-      storageBucket: "daftar-ulang-3b51c.appspot.com",
+      storageBucket: "daftar-ulang-3b51c.firebasestorage.app",
       messagingSenderId: "391256117697",
       appId: "1:391256117697:web:3a46db31e287c8d6fd9f40",
       measurementId: "G-TKJWG48RGW"
@@ -115,22 +115,21 @@
     }
 
     function recall(teller) {
-      db.ref(`teller/${teller}`).get().then(snap => {
-        if (snap.exists()) {
-          const num = snap.val();
-          db.ref("triggerUlang").set({
-            nomor: num,
-            teller: teller,
-            time: Date.now()
-          });
-        }
+  db.ref(`teller/${teller}`).get().then(snap => {
+    if (snap.exists()) {
+      const num = snap.val();
+      db.ref("antrian").set({ nomor: num, teller }).then(() => {
+        // Langsung bicara ulang tanpa tunggu update Firebase listener
+        
       });
     }
+  });
+}
+
 
     function reset() {
       if (confirm("Yakin reset antrian?")) {
-        db.ref("antrian").set({ nomor: 0, teller: "-" });
-        db.ref("triggerUlang").set({ nomor: 0, teller: "-", time: Date.now() });
+        db.ref("antrian").set({ nomor: 0 });
         for (let i = 1; i <= 10; i++) {
           db.ref(`teller/${i}`).set(0);
         }
@@ -143,13 +142,6 @@
       info.innerHTML = `<p>Nomor Antrian: <strong>${display}</strong> (verifikator ${data.teller})</p>`;
       updateQueue(data);
       if (data.nomor > 0) {
-        speakWithDing(`Nomor antrian ${data.nomor}, silakan ke verifikator ${data.teller}.`);
-      }
-    });
-
-    db.ref("triggerUlang").on("value", snap => {
-      const data = snap.val();
-      if (data && data.nomor > 0) {
         speakWithDing(`Nomor antrian ${data.nomor}, silakan ke verifikator ${data.teller}.`);
       }
     });
