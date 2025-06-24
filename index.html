@@ -45,13 +45,13 @@
 <body>
 
   <div class="card">
-    <h1>Sistem Antrian 10 Teller</h1>
+    <h1>Sistem Antrian 10 Verifikator</h1>
     <button onclick="reset()">Reset</button>
     <div id="info"></div>
   </div>
 
   <div class="card">
-    <h2>Teller</h2>
+    <h2>Loket</h2>
     <div id="teller-buttons"></div>
   </div>
 
@@ -86,7 +86,7 @@
     for (let i = 1; i <= 10; i++) {
       const div = document.createElement("div");
       div.innerHTML = `
-        <strong>Teller ${i}</strong><br>
+        <strong>Verifikator ${i}</strong><br>
         <button onclick="call(${i})">Panggil</button>
         <button onclick="recall(${i})">Ulang</button>
       `;
@@ -118,10 +118,7 @@
   db.ref(`teller/${teller}`).get().then(snap => {
     if (snap.exists()) {
       const num = snap.val();
-      db.ref("antrian").set({ nomor: num, teller }).then(() => {
-        // Langsung bicara ulang tanpa tunggu update Firebase listener
-        speakWithDing(`Nomor antrian ${num}, silakan ke teller ${teller}.`);
-      });
+      db.ref("antrian").set({ nomor: num, teller });
     }
   });
 }
@@ -138,10 +135,10 @@
     db.ref("antrian").on("value", snap => {
       const data = snap.exists() ? snap.val() : { nomor: 0, teller: "-" };
       const display = String(data.nomor).padStart(3, "0");
-      info.innerHTML = `<p>Nomor Antrian: <strong>${display}</strong> (Teller ${data.teller})</p>`;
+      info.innerHTML = `<p>Nomor Antrian: <strong>${display}</strong> (verifikator ${data.teller})</p>`;
       updateQueue(data);
       if (data.nomor > 0) {
-        speakWithDing(`Nomor antrian ${data.nomor}, silakan ke teller ${data.teller}.`);
+        speakWithDing(`Nomor antrian ${data.nomor}, silakan ke verifikator ${data.teller}.`);
       }
     });
 
@@ -151,7 +148,7 @@
       const display = String(data.nomor).padStart(3, '0');
       const row = document.createElement("div");
       row.className = "queue-item";
-      row.innerHTML = `<span>${display}</span><span>Teller ${data.teller}</span>`;
+      row.innerHTML = `<span>${display}</span><span>Verifikator ${data.teller}</span>`;
       list.appendChild(row);
     }
   </script>
