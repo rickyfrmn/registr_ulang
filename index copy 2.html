@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistem Antrian 10 Teller</title>
+  <title>Sistem Antrian 10 Verifikator</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -71,7 +71,7 @@
       authDomain: "daftar-ulang-3b51c.firebaseapp.com",
       databaseURL: "https://daftar-ulang-3b51c-default-rtdb.firebaseio.com",
       projectId: "daftar-ulang-3b51c",
-      storageBucket: "daftar-ulang-3b51c.firebasestorage.app",
+      storageBucket: "daftar-ulang-3b51c.appspot.com",
       messagingSenderId: "391256117697",
       appId: "1:391256117697:web:3a46db31e287c8d6fd9f40",
       measurementId: "G-TKJWG48RGW"
@@ -109,27 +109,23 @@
       db.ref("antrian/nomor").get().then(snap => {
         let num = snap.exists() ? snap.val() : 0;
         let nextNum = num + 1;
-        db.ref("antrian").set({ nomor: nextNum, teller });
+        db.ref("antrian").set({ nomor: nextNum, teller, time: Date.now() });
         db.ref(`teller/${teller}`).set(nextNum);
       });
     }
 
     function recall(teller) {
-  db.ref(`teller/${teller}`).get().then(snap => {
-    if (snap.exists()) {
-      const num = snap.val();
-      db.ref("antrian").set({ nomor: num, teller }).then(() => {
-        // Langsung bicara ulang tanpa tunggu update Firebase listener
-        
+      db.ref(`teller/${teller}`).get().then(snap => {
+        if (snap.exists()) {
+          const num = snap.val();
+          db.ref("antrian").set({ nomor: num, teller, time: Date.now() });
+        }
       });
     }
-  });
-}
-
 
     function reset() {
       if (confirm("Yakin reset antrian?")) {
-        db.ref("antrian").set({ nomor: 0 });
+        db.ref("antrian").set({ nomor: 0, teller: "-", time: Date.now() });
         for (let i = 1; i <= 10; i++) {
           db.ref(`teller/${i}`).set(0);
         }
@@ -137,7 +133,7 @@
     }
 
     db.ref("antrian").on("value", snap => {
-      const data = snap.exists() ? snap.val() : { nomor: 0, teller: "-" };
+      const data = snap.exists() ? snap.val() : { nomor: 0, teller: "-", time: 0 };
       const display = String(data.nomor).padStart(3, "0");
       info.innerHTML = `<p>Nomor Antrian: <strong>${display}</strong> (verifikator ${data.teller})</p>`;
       updateQueue(data);
