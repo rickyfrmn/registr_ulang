@@ -30,11 +30,6 @@
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       text-align: center;
-      transition: background-color 0.3s ease;
-    }
-    .loket-card.active {
-      background-color: #d1ecf1; /* biru muda highlight */
-      border: 2px solid #0c5460;
     }
     .loket-card h3 {
       margin: 0 0 8px 0;
@@ -67,7 +62,7 @@
 
   <div class="card" id="teller-buttons"></div>
 
-  <audio id="dingdong" src="ding-dong.mp3" preload="auto"></audio>
+  <audio id="dingdong" src="ding-dong3.mp3" preload="auto"></audio>
 
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
@@ -88,6 +83,7 @@
     const db = firebase.database();
     const bell = document.getElementById('dingdong');
     const tellerButtons = document.getElementById("teller-buttons");
+    const tellerNomor = {};
 
     for (let i = 1; i <= 10; i++) {
       const div = document.createElement("div");
@@ -100,6 +96,7 @@
         <button onclick="recall(${i})">Ulang</button>
       `;
       tellerButtons.appendChild(div);
+      tellerNomor[i] = 0;
     }
 
     function speakWithDing(text) {
@@ -120,7 +117,6 @@
         let nextNum = num + 1;
         db.ref("antrian").set({ nomor: nextNum, teller });
         db.ref(`teller/${teller}`).set(nextNum);
-        db.ref("highlight").set(teller);
       });
     }
 
@@ -133,7 +129,6 @@
             teller: teller,
             time: Date.now()
           });
-          db.ref("highlight").set(teller);
         }
       });
     }
@@ -142,7 +137,6 @@
       if (confirm("Yakin reset antrian?")) {
         db.ref("antrian").set({ nomor: 0, teller: "-" });
         db.ref("triggerUlang").set({ nomor: 0, teller: "-", time: Date.now() });
-        db.ref("highlight").set(0);
         for (let i = 1; i <= 10; i++) {
           db.ref(`teller/${i}`).set(0);
         }
@@ -170,16 +164,6 @@
         updateNomor(i, num);
       });
     }
-
-    db.ref("highlight").on("value", snap => {
-      const active = snap.val() || 0;
-      for (let i = 1; i <= 10; i++) {
-        const el = document.getElementById(`verif-${i}`);
-        if (el) {
-          el.classList.toggle("active", i === active);
-        }
-      }
-    });
 
     function updateNomor(teller, nomor) {
       const el = document.getElementById(`nomor-${teller}`);
