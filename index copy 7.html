@@ -74,6 +74,14 @@
       background-color: #0056b3;
     }
 
+    .btn-reset {
+      background-color: #007bff;
+    }
+
+    .btn-reset:hover {
+      background-color: #0056b3;
+    }
+
     .btn-kembali {
       background-color: #ffc107;
       color: #212529;
@@ -91,7 +99,7 @@
     <h1>Sistem Antrian 10 Verifikator</h1>
 
     <div class="action-row">
-      <button type="button" onclick="reset()">Reset</button>
+      <button type="button" class="btn-reset" onclick="reset()">Reset</button>
       <button type="button" class="btn-kembali" onclick="kembali()">Kembali</button>
     </div>
   </div>
@@ -160,87 +168,73 @@
     }
 
     function call(teller) {
-      Promise.all([
-        db.ref("antrian").get(),
-        db.ref(`teller/${teller}`).get()
-      ])
-      .then(([antrianSnap, tellerSnap]) => {
-        const antrianLama = antrianSnap.val() || {
-          nomor: 0,
-          teller: "-"
-        };
+      const historyKey = db.ref("history").push().key;
+      const waktuPanggil = Date.now();
+
+      db.ref().transaction(data => {
+        data = data || {};
+
+        const antrianLama = data.antrian || { nomor: 0, teller: "-" };
+        const tellerData = data.teller || {};
 
         const nomorSebelumnya = Number(antrianLama.nomor) || 0;
         const tellerSebelumnya = antrianLama.teller || "-";
-        const nomorLamaDiTellerIni = tellerSnap.exists() ? Number(tellerSnap.val()) || 0 : 0;
+        const nomorLamaDiTellerIni = Number(tellerData[teller]) || 0;
         const nomorBaru = nomorSebelumnya + 1;
-        const waktu = Date.now();
 
-        const historyRef = db.ref("history").push();
-        const updates = {};
+        data.history = data.history || {};
 
-        updates[`history/${historyRef.key}`] = {
+        data.history[historyKey] = {
           nomorSebelumnya: nomorSebelumnya,
           tellerSebelumnya: tellerSebelumnya,
           tellerYangMemanggil: teller,
           nomorLamaDiTellerIni: nomorLamaDiTellerIni,
           nomorYangDibatalkan: nomorBaru,
-          time: waktu
+          time: waktuPanggil
         };
 
-        updates["antrian"] = {
+        data.antrian = {
           nomor: nomorBaru,
           teller: teller,
-          time: waktu
+          time: waktuPanggil
         };
 
-        updates[`teller/${teller}`] = nomorBaru;
-        updates["highlight"] = teller;
+        data.teller = tellerData;
+        data.teller[teller] = nomorBaru;
+        data.highlight = teller;
 
-        return db.ref().update(updates);
-      })
-      .catch(error => {
+        return data;
+      }).catch(error => {
         alert("Gagal memanggil nomor: " + error.message);
       });
     }
 
     function recall(teller) {
-      db.ref(`teller/${teller}`).get()
-        .then(snap => {
-          if (!snap.exists()) {
-            return;
-          }
-
+      db.ref(`teller/${teller}`).get().then(snap => {
+        if (snap.exists()) {
           const num = Number(snap.val()) || 0;
 
-          if (num <= 0) {
-            return;
-          }
-
-          const waktu = Date.now();
-
-          db.ref().update({
-            "triggerUlang": {
+          if (num > 0) {
+            db.ref("triggerUlang").set({
               nomor: num,
               teller: teller,
-              time: waktu
-            },
-            "highlight": teller
-          });
-        })
-        .catch(error => {
-          alert("Gagal mengulang panggilan: " + error.message);
-        });
+              time: Date.now()
+            });
+
+            db.ref("highlight").set(teller);
+          }
+        }
+      });
     }
 
     function kembali() {
       db.ref("history")
-        .orderByChild("time")
+        .orderByKey()
         .limitToLast(1)
         .get()
         .then(snap => {
           if (!snap.exists()) {
-            alert("Belum ada history panggilan di Firebase.");
+            alert("Tidak ada riwayat panggilan sebelumnya.");
             return;
           }
 
@@ -252,8 +246,8 @@
             historyData = child.val();
           });
 
-          if (!historyKey || !historyData) {
-            alert("History panggilan tidak valid.");
+          if (!historyData) {
+            alert("Riwayat panggilan tidak valid.");
             return;
           }
 
@@ -261,41 +255,38 @@
           const tellerSebelumnya = historyData.tellerSebelumnya || "-";
           const tellerYangMemanggil = historyData.tellerYangMemanggil;
           const nomorLamaDiTellerIni = Number(historyData.nomorLamaDiTellerIni) || 0;
-          const waktu = Date.now();
 
           const updates = {};
 
           updates["antrian"] = {
             nomor: nomorSebelumnya,
             teller: tellerSebelumnya,
-            time: waktu
+            time: Date.now()
           };
 
           updates[`teller/${tellerYangMemanggil}`] = nomorLamaDiTellerIni;
-          updates["highlight"] = tellerSebelumnya === "-" ? 0 : Number(tellerSebelumnya);
+          updates["highlight"] = tellerSebelumnya === "-" ? 0 : tellerSebelumnya;
           updates[`history/${historyKey}`] = null;
 
-          return db.ref().update(updates);
+          db.ref().update(updates);
         })
         .catch(error => {
-          alert("Gagal mengambil history dari Firebase: " + error.message);
+          alert("Gagal mengembalikan nomor: " + error.message);
         });
     }
 
     function reset() {
       if (confirm("Yakin reset antrian?")) {
-        const waktu = Date.now();
-
         const updates = {
           "antrian": {
             nomor: 0,
             teller: "-",
-            time: waktu
+            time: Date.now()
           },
           "triggerUlang": {
             nomor: 0,
             teller: "-",
-            time: waktu
+            time: Date.now()
           },
           "highlight": 0,
           "history": null
@@ -305,54 +296,41 @@
           updates[`teller/${i}`] = 0;
         }
 
-        db.ref().update(updates)
-          .catch(error => {
-            alert("Gagal reset antrian: " + error.message);
-          });
+        db.ref().update(updates);
       }
     }
 
     db.ref("antrian").on("value", snap => {
-      const data = snap.val() || {
-        nomor: 0,
-        teller: "-",
-        time: 0
-      };
+      const data = snap.val() || { nomor: 0, teller: "-", time: 0 };
 
-      const nomor = Number(data.nomor) || 0;
-      const teller = data.teller || "-";
-      const waktu = Number(data.time) || 0;
-
-      if (teller !== "-" && teller !== 0) {
-        updateNomor(teller, nomor);
+      if (data.teller !== "-" && data.teller !== 0) {
+        updateNomor(data.teller, data.nomor);
       }
 
+      const waktu = Number(data.time) || 0;
+
       if (
-        nomor > 0 &&
-        teller !== "-" &&
+        data.nomor > 0 &&
+        data.teller !== "-" &&
         waktu >= pageLoadedAt
       ) {
-        speakWithDing(`Nomor antrian ${nomor}, silakan ke verifikator ${teller}.`);
+        speakWithDing(`Nomor antrian ${data.nomor}, silakan ke verifikator ${data.teller}.`);
       }
     });
 
     db.ref("triggerUlang").on("value", snap => {
       const data = snap.val();
 
-      if (!data) {
-        return;
-      }
+      if (!data) return;
 
-      const nomor = Number(data.nomor) || 0;
-      const teller = data.teller || "-";
       const waktu = Number(data.time) || 0;
 
       if (
-        nomor > 0 &&
-        teller !== "-" &&
+        data.nomor > 0 &&
+        data.teller !== "-" &&
         waktu >= pageLoadedAt
       ) {
-        speakWithDing(`Nomor antrian ${nomor}, silakan ke verifikator ${teller}.`);
+        speakWithDing(`Nomor antrian ${data.nomor}, silakan ke verifikator ${data.teller}.`);
       }
     });
 

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistem Antrian 10 Verifikator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      padding: 20px;
+      max-width: 1200px;
+      margin: auto;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+    #teller-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+    .loket-card {
+      background: #fff;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+      transition: background-color 0.3s ease;
+    }
+    .loket-card.active {
+      background-color: #d1ecf1; /* biru muda highlight */
+      border: 2px solid #0c5460;
+    }
+    .loket-card h3 {
+      margin: 0 0 8px 0;
+    }
+    .loket-card .nomor {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      margin: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>Sistem Antrian 10 Verifikator</h1>
+    <button onclick="reset()">Reset</button>
+  </div>
+
+  <div class="card" id="teller-buttons"></div>
+
+  <audio id="dingdong" src="ding-dong3.mp3" preload="auto"></audio>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCJRUZfNVBnbENgHQio_ePHhK9U1XmzgU8",
+      authDomain: "daftar-ulang-3b51c.firebaseapp.com",
+      databaseURL: "https://daftar-ulang-3b51c-default-rtdb.firebaseio.com",
+      projectId: "daftar-ulang-3b51c",
+      storageBucket: "daftar-ulang-3b51c.appspot.com",
+      messagingSenderId: "391256117697",
+      appId: "1:391256117697:web:3a46db31e287c8d6fd9f40",
+      measurementId: "G-TKJWG48RGW"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const bell = document.getElementById('dingdong');
+    const tellerButtons = document.getElementById("teller-buttons");
+
+    for (let i = 1; i <= 10; i++) {
+      const div = document.createElement("div");
+      div.className = "loket-card";
+      div.id = `verif-${i}`;
+      div.innerHTML = `
+        <h3>Verifikator ${i}</h3>
+        <div class="nomor" id="nomor-${i}">000</div>
+        <button onclick="call(${i})">Panggil</button>
+        <button onclick="recall(${i})">Ulang</button>
+      `;
+      tellerButtons.appendChild(div);
+    }
+
+    function speakWithDing(text) {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = "id-ID";
+      utter.rate = 0.85;
+      utter.pitch = 1;
+      bell.play().then(() => {
+        bell.onended = () => speechSynthesis.speak(utter);
+      }).catch(() => {
+        speechSynthesis.speak(utter);
+      });
+    }
+
+    function call(teller) {
+      db.ref("antrian/nomor").get().then(snap => {
+        let num = snap.exists() ? snap.val() : 0;
+        let nextNum = num + 1;
+        db.ref("antrian").set({ nomor: nextNum, teller });
+        db.ref(`teller/${teller}`).set(nextNum);
+        db.ref("highlight").set(teller);
+      });
+    }
+
+    function recall(teller) {
+      db.ref(`teller/${teller}`).get().then(snap => {
+        if (snap.exists()) {
+          const num = snap.val();
+          db.ref("triggerUlang").set({
+            nomor: num,
+            teller: teller,
+            time: Date.now()
+          });
+          db.ref("highlight").set(teller);
+        }
+      });
+    }
+
+    function reset() {
+      if (confirm("Yakin reset antrian?")) {
+        db.ref("antrian").set({ nomor: 0, teller: "-" });
+        db.ref("triggerUlang").set({ nomor: 0, teller: "-", time: Date.now() });
+        db.ref("highlight").set(0);
+        for (let i = 1; i <= 10; i++) {
+          db.ref(`teller/${i}`).set(0);
+        }
+      }
+    }
+
+    db.ref("antrian").on("value", snap => {
+      const data = snap.val() || { nomor: 0, teller: "-" };
+      updateNomor(data.teller, data.nomor);
+      if (data.nomor > 0) {
+        speakWithDing(`Nomor antrian ${data.nomor}, silakan ke verifikator ${data.teller}.`);
+      }
+    });
+
+    db.ref("triggerUlang").on("value", snap => {
+      const data = snap.val();
+      if (data && data.nomor > 0) {
+        speakWithDing(`Nomor antrian ${data.nomor}, silakan ke verifikator ${data.teller}.`);
+      }
+    });
+
+    for (let i = 1; i <= 10; i++) {
+      db.ref(`teller/${i}`).on("value", snap => {
+        const num = snap.val() || 0;
+        updateNomor(i, num);
+      });
+    }
+
+    db.ref("highlight").on("value", snap => {
+      const active = snap.val() || 0;
+      for (let i = 1; i <= 10; i++) {
+        const el = document.getElementById(`verif-${i}`);
+        if (el) {
+          el.classList.toggle("active", i === active);
+        }
+      }
+    });
+
+    function updateNomor(teller, nomor) {
+      const el = document.getElementById(`nomor-${teller}`);
+      if (el) {
+        el.textContent = String(nomor).padStart(3, '0');
+      }
+    }
+  </script>
+</body>
+</html>
